@@ -2,6 +2,7 @@ from logging import debug
 from modules import drone
 from simple_pid import PID
 import time
+import os
 
 USE_PID_YAW = True
 USE_PID_ROLL = False
@@ -92,6 +93,11 @@ def print_drone_report():
 
 def initialize_debug_logs(DEBUG_FILEPATH):
     global debug_yaw, debug_velocity
+
+    directory = os.path.dirname(DEBUG_FILEPATH)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     debug_yaw = open(DEBUG_FILEPATH + "_yaw.txt", "a")
     debug_yaw.write("P: I: D: Error: command:\n")
 

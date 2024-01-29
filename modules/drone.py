@@ -211,4 +211,3 @@ def send_movement_command_XYA(velocity_x, velocity_y, altitude):
 
     vehicle.send_mavlink(msg)
     #Vehicle.commands.flush()
-

@@ -1,15 +1,14 @@
 import sys, time
 import argparse
-sys.path.insert(1, 'modules')
+sys.path.insert(1, '/home/solid/Documents/nava/Autonomous-Ai-drone-scripts/modules')
 
 import cv2
 import collections
 
-import lidar
+# import lidar
 import detector_mobilenet as detector
 import vision
-import control 
-import keyboard
+import control
 
 # Args parser
 parser = argparse.ArgumentParser(description='Drive autonomous')
@@ -29,8 +28,8 @@ STATE = "takeoff"                               # takeoff land track search
 # end config
 
 def setup():
-    print("connecting lidar")
-    lidar.connect_lidar("/dev/ttyTHS1")
+    # print("connecting lidar")
+    # lidar.connect_lidar("/dev/ttyTHS1")
 
     print("setting up detector")
     detector.initialize_detector()
@@ -57,27 +56,28 @@ control.initialize_debug_logs(args.debug_path)
 def track():
     print("State is TRACKING -> " + STATE)
     while True:
-
-        if keyboard.is_pressed('q'):  # if key 'q' is pressed 
-            print("Closing due to manual interruption")
-            land() # Closes the loop and program
-
         detections, fps, image = detector.get_detections()
 
         if len(detections) > 0:
             person_to_track = detections[0] # only track 1 person
-            
             print(person_to_track)
 
-            person_center = person_to_track.Center # get center of person to track
+            # Assuming the first four values are center_x, center_y, width, height
+            center_x, center_y, w, h = person_to_track[:4]
+
+            # Calculate the absolute center coordinates
+            person_center = (int(center_x), int(center_y))
 
             x_delta = vision.get_single_axis_delta(image_center[0],person_center[0]) # get x delta 
             y_delta = vision.get_single_axis_delta(image_center[1],person_center[1]) # get y delta
 
-            lidar_on_target = vision.point_in_rectangle(image_center,person_to_track.Left, person_to_track.Right, person_to_track.Top, person_to_track.Bottom) #check if lidar is pointed on target
+            # lidar_on_target = vision.point_in_rectangle(image_center,person_to_track.Left, person_to_track.Right, person_to_track.Top, person_to_track.Bottom) #check if lidar is pointed on target
 
-            lidar_dist = lidar.read_lidar_distance()[0] # get lidar distance in meter
+            # lidar_dist = lidar.read_lidar_distance()[0] # get lidar distance in meter
             
+            lidar_on_target = False
+            lidar_dist = 15
+
             MA_Z.append(lidar_dist)
             MA_X.append(x_delta)
 
@@ -109,9 +109,6 @@ def search():
     
     control.stop_drone()
     while time.time() - start < 40:
-        if keyboard.is_pressed('q'):  # if key 'q' is pressed 
-            print("Closing due to manual interruption")
-            land() # Closes the loop and program
 
         detections, fps, image = detector.get_detections()
         print("searching: " + str(len(detections)))
@@ -153,8 +150,14 @@ def prepare_visualisation(lidar_distance, person_center, person_to_track, image,
     #draw path
     cv2.line(image, (int(image_center[0]), int(image_center[1])), (int(person_center[0]), int(person_center[1])), (255, 0, 0), thickness=10, lineType=8, shift=0)
 
-    #draw bbox around target
-    cv2.rectangle(image,(int(person_to_track.Left),int(person_to_track.Bottom)), (int(person_to_track.Right),int(person_to_track.Top)), (0,0,255), thickness=10)
+    center_x, center_y, w, h = person_to_track[:4]
+    left = int(center_x - w / 2)
+    top = int(center_y - h / 2)
+    right = int(center_x + w / 2)
+    bottom = int(center_y + h / 2)
+
+    # Draw bounding box around the target
+    cv2.rectangle(image, (left, top), (right, bottom), (0, 0, 255), thickness=10)
 
     #show drone center
     cv2.circle(image, (int(image_center[0]), int(image_center[1])), 20, (0, 255, 0), thickness=-1, lineType=8, shift=0)
